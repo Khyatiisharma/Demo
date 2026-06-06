@@ -52,9 +52,9 @@ jobs:
         run: docker push ${{ steps.login-ecr.outputs.registry }}/backend:latest
 
       - name: Deploy Frontend Service
-        run: aws ecs update-service --cluster Cluster1 --service frontend-service --force-new-deployment
+        run: aws ecs update-service --cluster Cluster1 --service frontend-task-service-4gbfxl0e --force-new-deployment
 
       - name: Deploy Backend Service
-        run: aws ecs update-service --cluster Cluster1 --service backend-service --force-new-deployment
+        run: aws ecs update-service --cluster Cluster1 --service backend-task-service-iwvupaie --force-new-deployment
 
 
