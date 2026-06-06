@@ -1,84 +1,60 @@
+
 name: Build and Deploy to ECS
 
 on:
-push:
-branches:
-- main
+  push:
+    branches:
+      - main
 
 env:
-AWS_REGION: us-east-1
-ECS_CLUSTER: Cluster1
-FRONTEND_SERVICE: frontend-service
-BACKEND_SERVICE: backend-service
-FRONTEND_REPOSITORY: frontend
-BACKEND_REPOSITORY: backend
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: Cluster1
+  FRONTEND_SERVICE: frontend-service
+  BACKEND_SERVICE: backend-service
+  FRONTEND_REPOSITORY: frontend
+  BACKEND_REPOSITORY: backend
 
 jobs:
-deploy:
-runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest
 
-```
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
 
-steps:
-  - name: Checkout Source
-    uses: actions/checkout@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-  - name: Configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v4
-    with:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-  - name: Login to Amazon ECR
-    id: login-ecr
-    uses: aws-actions/amazon-ecr-login@v2
+      - name: Build Frontend Image
+        run: docker build -t frontend ./frontend
 
-  # Frontend
+      - name: Tag Frontend Image
+        run: docker tag frontend:latest ${{ steps.login-ecr.outputs.registry }}/frontend:latest
 
-  - name: Build Frontend Image
-    run: |
-      docker build -t frontend ./frontend
+      - name: Push Frontend Image
+        run: docker push ${{ steps.login-ecr.outputs.registry }}/frontend:latest
 
-  - name: Tag Frontend Image
-    run: |
-      docker tag frontend:latest \
-      ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:latest
+      - name: Build Backend Image
+        run: docker build -t backend ./backend
 
-  - name: Push Frontend Image
-    run: |
-      docker push \
-      ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_REPOSITORY }}:latest
+      - name: Tag Backend Image
+        run: docker tag backend:latest ${{ steps.login-ecr.outputs.registry }}/backend:latest
 
-  # Backend
+      - name: Push Backend Image
+        run: docker push ${{ steps.login-ecr.outputs.registry }}/backend:latest
 
-  - name: Build Backend Image
-    run: |
-      docker build -t backend ./backend
+      - name: Deploy Frontend Service
+        run: aws ecs update-service --cluster Cluster1 --service frontend-service --force-new-deployment
 
-  - name: Tag Backend Image
-    run: |
-      docker tag backend:latest \
-      ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:latest
+      - name: Deploy Backend Service
+        run: aws ecs update-service --cluster Cluster1 --service backend-service --force-new-deployment
 
-  - name: Push Backend Image
-    run: |
-      docker push \
-      ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_REPOSITORY }}:latest
 
-  # ECS Deployment
-
-  - name: Deploy Frontend Service
-    run: |
-      aws ecs update-service \
-      --cluster $ECS_CLUSTER \
-      --service $FRONTEND_SERVICE \
-      --force-new-deployment
-
-  - name: Deploy Backend Service
-    run: |
-      aws ecs update-service \
-      --cluster $ECS_CLUSTER \
-      --service $BACKEND_SERVICE \
-      --force-new-deployment
-```
