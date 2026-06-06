@@ -17,5 +17,9 @@ def api():
         "message": "Hello from ECS Backend"
     }
 
+@app.route("/version")
+def version():
+    return {"version": "v2"}
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
