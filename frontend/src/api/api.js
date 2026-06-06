@@ -5,3 +5,4 @@ export const getHealth = async () => {
 
   return response.json();
 };
+
